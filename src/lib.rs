@@ -123,23 +123,25 @@ mod tests {
     }
 
     const ORIGINAL_SIZE: usize = 10;
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: usize = 10;
 
     macro_rules! run_benchmark {
-        ($get_item:expr) => {{
-            let mut item = $get_item;
+        ($create_item:expr) => {{
+            for _ in 0..1000 {
+                let mut item = $create_item();
 
-            for n in 0..ORIGINAL_SIZE {
-                item.push(n);
-            }
-
-            drop(item);
-
-            for n in 0..ITERATIONS {
-                let mut item = $get_item;
-
-                for n in 0..(ITERATIONS - n) {
+                for n in 0..ORIGINAL_SIZE {
                     item.push(n);
+                }
+
+                drop(item);
+
+                for n in 0..ITERATIONS {
+                    let mut item = $create_item();
+
+                    for n in 0..(ITERATIONS - n) {
+                        item.push(n);
+                    }
                 }
             }
         }};
@@ -147,14 +149,14 @@ mod tests {
 
     #[bench]
     fn bench_remem(b: &mut Bencher) {
+        let pool = Pool::<Vec<usize>>::new(|| Vec::new(), |v| v.clear());
         b.iter(|| {
-            let pool = Pool::<Vec<usize>>::new(|| Vec::new(), |v| v.clear());
-            run_benchmark!(pool.get());
+            run_benchmark!(|| pool.get());
         });
     }
 
     #[bench]
     fn bench_vec(b: &mut Bencher) {
-        b.iter(|| run_benchmark!(Vec::new()));
+        b.iter(|| run_benchmark!(|| Vec::new()));
     }
 }
